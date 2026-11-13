@@ -1,0 +1,44 @@
+
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Instalar .NET 10'
+    inputs:
+      packageType: 'sdk'
+      version: '10.0.x'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Restaurar dependencias'
+    inputs:
+      command: 'restore'
+      projects: 'AzureFundamentos.Api.Tests/AzureFundamentos.Api.Tests.csproj'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Compilar API e testes'
+    inputs:
+      command: 'build'
+      projects: 'AzureFundamentos.Api.Tests/AzureFundamentos.Api.Tests.csproj'
+      arguments: '--configuration $(buildConfiguration) --no-restore'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Executar testes xUnit e Coverlet'
+    inputs:
+      command: 'test'
+      projects: 'AzureFundamentos.Api.Tests/AzureFundamentos.Api.Tests.csproj'
+      arguments: '--configuration $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --results-directory $(Agent.TempDirectory)/TestResults'
+      publishTestResults: true
+
+  - task: PublishCodeCoverageResults@2
+    displayName: 'Publicar cobertura de codigo'
+    condition: succeededOrFailed()
+    inputs:
+      summaryFileLocation: '$(Agent.TempDirectory)/TestResults/**/coverage.cobertura.xml'
+      failIfCoverageEmpty: true
